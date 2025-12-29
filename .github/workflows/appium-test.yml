@@ -14,10 +14,10 @@ jobs:
 
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
-      PATH: /usr/local/lib/android/sdk/cmdline-tools/latest/bin:/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/emulator:${{ runner.env.PATH }}
+      PATH: /usr/local/lib/android/sdk/cmdline-tools/latest/bin:/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/emulator:$PATH
 
     steps:
-      # 1. Checkout repo
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -28,13 +28,13 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3. Install Android SDK Command-line tools
+      # 3. Install Android SDK command-line tools
       - name: Install Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
           cd $ANDROID_HOME/cmdline-tools
           curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip commandlinetools.zip
+          unzip -q commandlinetools.zip
           mv cmdline-tools latest
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-33" "system-images;android-33;google_apis;x86_64" "emulator"
@@ -52,7 +52,7 @@ jobs:
           adb wait-for-device
           adb shell input keyevent 82
 
-      # 6. Build & run Appium tests
+      # 6. Run Appium tests
       - name: Run Appium Tests
         run: |
           mvn clean test
