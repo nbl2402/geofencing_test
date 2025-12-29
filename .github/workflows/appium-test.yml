@@ -1,76 +1,46 @@
-name: Appium Java Tests
+name: Appium Test on Android Emulator
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
-  android-appium:
+  android-emulator-test:
     runs-on: ubuntu-latest
 
-    steps:
-      # 1️⃣ Checkout code
-      - name: Checkout code
-        uses: actions/checkout@v3
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      PATH: ${{ env.ANDROID_HOME }}/emulator:${{ env.ANDROID_HOME }}/tools:${{ env.ANDROID_HOME }}/platform-tools:${{ env.PATH }}
 
-      # 2️⃣ Set up JDK
-      - name: Setup Java
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          distribution: temurin
-          java-version: 17
+          java-version: '17'
+          distribution: 'temurin'
 
-      # 3️⃣ Cache Maven dependencies
-      - name: Cache Maven
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+      - name: Accept Android licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      # 4️⃣ Build project
-      - name: Build project
-        run: mvn clean install -DskipTests
-
-      # 5️⃣ Setup Android Emulator
-      - name: Setup Android Emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          emulator-options: -no-window
-          script: |
-            adb devices
-
-      # 6️⃣ Install Node & Appium
-      - name: Install Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      - name: Install Appium
-        run: npm install -g appium
-
-      # 7️⃣ Start Appium server in background
-      - name: Start Appium Server
-        run: appium -a 0.0.0.0 -p 4723 &
-
-      # 8️⃣ Run Appium Tests with Maven
-      - name: Run Appium Tests
+      - name: Install Android emulator and system images
         run: |
-          mvn test || true   # tiếp tục workflow ngay cả khi test fail
+          sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;x86_64"
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
 
-      # 9️⃣ Upload screenshots and logs if exist
-      - name: Upload Test Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-artifacts
-          path: |
-            src/test/resources/screenshots/
-            target/surefire-reports/
+      - name: Start Android emulator
+        run: |
+          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-accel -gpu swiftshader_indirect &
+          adb wait-for-device
+          boot_completed=""
+          until [[ "$boot_completed" =~ "1" ]]; do
+              sleep 5
+              boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null)
+          done
+
+      - name: Run Appium tests
+        run: ./gradlew connectedAndroidTest
