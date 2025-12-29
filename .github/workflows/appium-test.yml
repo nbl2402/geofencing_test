@@ -1,47 +1,48 @@
-name: Appium Test on Android Emulator
+name: Appium Tests
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  android-emulator-test:
+  android-appium:
     runs-on: ubuntu-latest
 
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
-      # Không tham chiếu env.ANDROID_HOME trực tiếp ở đây
-      PATH: /usr/local/lib/android/sdk/emulator:/usr/local/lib/android/sdk/tools:/usr/local/lib/android/sdk/platform-tools:${PATH}
+      PATH: ${{ env.ANDROID_HOME }}/emulator:${{ env.ANDROID_HOME }}/tools:${{ env.ANDROID_HOME }}/tools/bin:${{ env.ANDROID_HOME }}/platform-tools:${{ env.PATH }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Set up JDK
-        uses: actions/setup-java@v3
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tar unzip wget zip libgl1-mesa-glx libpulse0 openjdk-11-jdk
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd: true
 
-      - name: Accept Android licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-
-      - name: Install Android emulator and system images
+      - name: Create AVD
         run: |
-          sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;x86_64"
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
+          echo no | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
 
-      - name: Start Android emulator
+      - name: Start Emulator
         run: |
-          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-accel -gpu swiftshader_indirect &
-          adb wait-for-device
-          boot_completed=""
-          until [[ "$boot_completed" =~ "1" ]]; do
-              sleep 5
-              boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null)
-          done
+          nohup $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-window -gpu swiftshader_indirect &
+          $ANDROID_HOME/platform-tools/adb wait-for-device
+          $ANDROID_HOME/platform-tools/adb shell input keyevent 82
 
       - name: Run Appium tests
-        run: ./gradlew connectedAndroidTest
+        run: |
+          mvn clean test
