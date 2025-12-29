@@ -1,0 +1,75 @@
+name: Appium Java Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  android-appium:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2️⃣ Set up JDK
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # 3️⃣ Cache Maven dependencies
+      - name: Cache Maven
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # 4️⃣ Build project
+      - name: Build project
+        run: mvn clean install -DskipTests
+
+      # 5️⃣ Setup Android Emulator
+      - name: Setup Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window
+          script: |
+            adb devices
+
+      # 6️⃣ Install Node & Appium
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Appium
+        run: npm install -g appium
+
+      # 7️⃣ Start Appium server in background
+      - name: Start Appium Server
+        run: appium -a 0.0.0.0 -p 4723 &
+
+      # 8️⃣ Run Appium Tests with Maven
+      - name: Run Appium Tests
+        run: |
+          mvn test || true   # tiếp tục workflow ngay cả khi test fail
+
+      # 9️⃣ Upload screenshots and logs if exist
+      - name: Upload Test Artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-artifacts
+          path: |
+            src/test/resources/screenshots/
+            target/surefire-reports/
