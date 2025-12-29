@@ -14,42 +14,45 @@ jobs:
 
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
-      JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+      PATH: /usr/local/lib/android/sdk/cmdline-tools/latest/bin:/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/emulator:${{ runner.env.PATH }}
 
     steps:
-      - name: Checkout repo
+      # 1. Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y tar unzip wget zip libgl1 libpulse0 openjdk-11-jdk
-
-      - name: Add Android tools to PATH
-        run: |
-          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
-          echo "$ANDROID_HOME/tools" >> $GITHUB_PATH
-          echo "$ANDROID_HOME/tools/bin" >> $GITHUB_PATH
-          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+      # 2. Setup Java
+      - name: Setup Java
+        uses: actions/setup-java@v3
         with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          force-avd: true
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Create AVD
+      # 3. Install Android SDK Command-line tools
+      - name: Install Android SDK
         run: |
-          echo no | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+          curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip commandlinetools.zip
+          mv cmdline-tools latest
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "system-images;android-33;google_apis;x86_64" "emulator"
 
+      # 4. Create AVD
+      - name: Create Android Emulator
+        run: |
+          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
+          emulator -list-avds
+
+      # 5. Start emulator (headless)
       - name: Start Emulator
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-window -gpu swiftshader_indirect &
-          $ANDROID_HOME/platform-tools/adb wait-for-device
-          $ANDROID_HOME/platform-tools/adb shell input keyevent 82
+          nohup emulator -avd test -no-window -no-audio -gpu swiftshader_indirect -no-snapshot-save &
+          adb wait-for-device
+          adb shell input keyevent 82
 
-      - name: Run Appium tests
+      # 6. Build & run Appium tests
+      - name: Run Appium Tests
         run: |
           mvn clean test
