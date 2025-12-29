@@ -1,0 +1,7 @@
+<suite name="Mobile Suite">
+    <test name="Android Tests">
+        <classes>
+            <class name="org.mob.TestGeoFencingRedirection"/>
+        </classes>
+    </test>
+</suite>
