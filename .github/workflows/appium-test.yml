@@ -26,7 +26,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip openjdk-11-jdk qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
-          sudo apt-get install -y libncurses5 libstdc++6 lib32z1 libbz2-1.0 libgl1-mesa-dev
+          sudo apt-get install -y libstdc++6 lib32z1 libbz2-1.0 libgl1-mesa-dev libncurses-dev
         shell: bash
 
       # Setup Android SDK
