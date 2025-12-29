@@ -61,3 +61,43 @@ build/
 
 ### Mac OS ###
 .DS_Store
+# Build / output directories
+/bin/
+/build/
+/out/
+/target/
+
+# Log files
+*.log
+
+# IDE / Editor
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Maven / Gradle
+.mvn/
+.settings/
+.gradle/
+!gradle-wrapper.jar
+
+# Environment / credentials
+*.env
+*.keystore
+
+# Test / Appium
+test-results/
+reports/
+*.apk
+*.app
+*.dex
+
+# Android / Emulator
+.emulator/
+*.lock
