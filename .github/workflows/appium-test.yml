@@ -1,53 +1,70 @@
-name: Appium Test
+name: Android Appium Tests
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
+
+env:
+  ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+  AVD_NAME: test
+  ANDROID_API_LEVEL: 33
+  SYSTEM_IMAGE: "system-images;android-33;google_apis;x86_64"
+  EMULATOR_RAM: 2048
 
 jobs:
-  android-emulator:
+  appium-test:
     runs-on: ubuntu-latest
 
-    env:
-      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
-      PATH: ${{ runner.temp }}/android-sdk/cmdline-tools/latest/bin:${{ runner.temp }}/android-sdk/platform-tools:${{ runner.temp }}/android-sdk/emulator:$PATH
-
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install dependencies
+      # Install dependencies
+      - name: Install required packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y unzip wget tar lib32stdc++6 lib32z1 qemu-kvm
+          sudo apt-get install -y wget unzip openjdk-11-jdk qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+          sudo apt-get install -y libncurses5 libstdc++6 lib32z1 libbz2-1.0 libgl1-mesa-dev
+        shell: bash
 
-      - name: Install Android SDK command line tools
+      # Setup Android SDK
+      - name: Setup Android SDK
         run: |
           mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
-          mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;x86_64"
+          unzip cmdline-tools.zip
+          mv cmdline-tools latest
+          rm cmdline-tools.zip
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-$ANDROID_API_LEVEL" "$SYSTEM_IMAGE"
+        shell: bash
 
-      - name: Create and start emulator
+      # Add Android tools to PATH
+      - name: Add Android SDK to PATH
         run: |
-          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
-          $ANDROID_SDK_ROOT/emulator/emulator -avd test -no-window -no-audio -no-snapshot &
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+
+      # Create and start emulator
+      - name: Create AVD
+        run: |
+          echo "no" | avdmanager create avd -n $AVD_NAME -k "$SYSTEM_IMAGE" --force
+      - name: Start Emulator
+        run: |
+          $ANDROID_SDK_ROOT/emulator/emulator -avd $AVD_NAME -no-audio -no-window -gpu swiftshader_indirect -memory $EMULATOR_RAM &
           adb wait-for-device
           adb shell input keyevent 82
+        shell: bash
 
+      # Run Appium tests
       - name: Run Appium tests
         run: |
-          # Câu lệnh chạy test của bạn, ví dụ dùng Maven:
-          mvn clean test
-
-      - name: Upload Test Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-report
-          path: target/surefire-reports/
+          # Start Appium server
+          npx appium &
+          sleep 10
+          # Run your test script
+          mvn test
+        shell: bash
