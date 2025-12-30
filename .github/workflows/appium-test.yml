@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  android-tests:
+  android-tests-update:
     runs-on: ubuntu-latest
 
 #    env:
@@ -24,7 +24,7 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/lib/android
+#          sudo rm -rf /usr/local/lib/android
           sudo rm -rf /usr/local/share/boost
           df -h
 
@@ -93,8 +93,17 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_5
-          emulator-options: -no-window -no-audio -no-boot-anim
+          emulator-options: >
+            -no-window
+            -no-audio
+            -no-boot-anim
+            -gpu swiftshader_indirect
+            -no-snapshot
+            -no-metrics
           script: |
+            echo "ADB location:"
+            which adb
+            adb wait-for-device
             adb devices
             mvn clean test
 
