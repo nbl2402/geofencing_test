@@ -29,8 +29,6 @@ jobs:
       - name: Setup Android SDK
         run: |
           export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
-
           mkdir -p $ANDROID_HOME/cmdline-tools
 
           # Download command line tools
@@ -42,14 +40,14 @@ jobs:
           mv $ANDROID_HOME/cmdline-tools/tmp/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
           rm -rf $ANDROID_HOME/cmdline-tools/tmp
 
-          # Update PATH để sdkmanager nhận
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+          # Update PATH để sdkmanager và avdmanager hoạt động
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
 
           # Cài platform-tools, build-tools, system image ARM
           yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;arm64-v8a"
 
       # 4️⃣ Accept SDK licenses
-      - name: Accept SDK licenses
+      - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
       # 5️⃣ Create & start emulator (ARM)
@@ -57,8 +55,10 @@ jobs:
         env:
           ANDROID_AVD_HOME: $HOME/.android/avd
           ANDROID_HOME: $HOME/android-sdk
-          PATH: $PATH:$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/emulator:$HOME/android-sdk/platform-tools
         run: |
+          # Append PATH trong run để tránh ghi đè PATH hệ thống
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
+          
           mkdir -p $ANDROID_AVD_HOME
 
           # Tạo AVD ARM
@@ -67,7 +67,7 @@ jobs:
           # Start emulator in background
           $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
 
-          # Chờ emulator boot
+          # Chờ emulator boot xong
           adb wait-for-device
           adb shell input keyevent 82
           echo "Emulator started"
