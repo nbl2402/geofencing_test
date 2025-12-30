@@ -1,49 +1,58 @@
-name: Android Appium CI
+name: Android Appium Tests
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
-  android-appium:
+  android-tests:
     runs-on: ubuntu-latest
 
     env:
-      JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.17-10/x64
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
-      PATH: /usr/bin:/bin:${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${{ github.workspace }}/android-sdk/emulator:$PATH
+      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:$PATH
 
     steps:
+      # Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y tar unzip wget curl git qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+      # Install dependencies for emulator
+      - name: Install required packages
+        run: sudo apt-get update && sudo apt-get install -y wget tar unzip qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 
-      - name: Setup Android SDK
+      # Setup Java (Maven)
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Install Android SDK command-line tools
+      - name: Install Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
-          cd $ANDROID_HOME/cmdline-tools
-          if [ ! -d "latest" ]; then
-            wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-            unzip cmdline-tools.zip
-            mv cmdline-tools latest
-          fi
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;35.0.0" "emulator" "system-images;android-33;google_apis;x86_64"
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          rm cmdline-tools.zip
+          yes | $ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;arm64-v8a"
 
-      - name: Create and start emulator
+      # Accept licenses
+      - name: Accept SDK licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager --licenses
+
+      # Create & start ARM64 emulator
+      - name: Create and start ARM64 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
           target: google_apis
-          arch: x86_64
+          arch: arm64-v8a
           force-avd-creation: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           script: |
@@ -59,24 +68,6 @@ jobs:
           enable-hw-keyboard: false
           channel: stable
 
-      - name: Wait for emulator to be fully ready
-        run: |
-          echo "Waiting for emulator to finish booting..."
-          timeout=0
-          until adb shell getprop sys.boot_completed | grep -m 1 '1'; do
-            sleep 5
-            timeout=$((timeout + 5))
-            if [ $timeout -gt 120 ]; then
-              echo "Emulator boot timeout!"
-              exit 1
-            fi
-          done
-          echo "Emulator is ready"
-
-      - name: Build and run tests with Maven
-        run: |
-          mvn clean install
-          mvn test
-
-      - name: Stop emulator
-        run: adb -s emulator-5554 emu kill
+      # Run Maven tests
+      - name: Run Appium tests
+        run: mvn clean test
