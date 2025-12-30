@@ -18,13 +18,12 @@ jobs:
       PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:$PATH
 
     steps:
+      - name: Install tar and dependencies
+        run: sudo apt-get update && sudo apt-get install -y tar wget unzip qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+
       # Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      # Install dependencies for emulator
-      - name: Install required packages
-        run: sudo apt-get update && sudo apt-get install -y wget tar unzip qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 
       # Setup Java (Maven)
       - name: Setup Java
