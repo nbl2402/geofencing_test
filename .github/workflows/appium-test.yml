@@ -28,18 +28,18 @@ jobs:
       # 3️⃣ Setup Android SDK
       - name: Setup Android SDK
         run: |
-          mkdir -p $HOME/android-sdk
+          mkdir -p $HOME/android-sdk/cmdline-tools
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH
-
+          
           # Download command line tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $ANDROID_HOME
-          mkdir -p $ANDROID_HOME/cmdline-tools/latest
-          mv $ANDROID_HOME/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
-
+          
+          # Unzip thẳng vào latest
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools/latest
+          
           # Install SDK packages
-          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;arm64-v8a"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;arm64-v8a"
 
       # 4️⃣ Accept licenses
       - name: Accept Android SDK licenses
