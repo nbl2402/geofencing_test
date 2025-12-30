@@ -1,46 +1,43 @@
-name: Java Maven Appium Tests
+name: Java Appium Tests
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
-  android-tests:
+  build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
 
     env:
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      ANDROID_HOME: ${{ runner.workspace }}/android-sdk
-      ANDROID_SDK_ROOT: ${{ runner.workspace }}/android-sdk
-      ANDROID_AVD_HOME: ${{ runner.workspace }}/.android/avd
-      PATH: ${{ runner.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ runner.workspace }}/android-sdk/platform-tools:${PATH}
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
+      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${PATH}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Install Android SDK dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y unzip tar libgl1-mesa-dev
-          mkdir -p $ANDROID_HOME/cmdline-tools
-          cd $ANDROID_HOME/cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip
-          mv cmdline-tools latest
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "emulator" "system-images;android-33;google_apis;x86_64"
+          sudo apt-get install -y unzip tar curl wget lib32stdc++6 lib32z1
+          sudo apt-get install -y openjdk-17-jdk
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager
 
-      - name: Create and start Android Emulator
+      - name: Setup Android SDK
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64"
+
+      - name: Create and start emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -48,15 +45,18 @@ jobs:
           arch: x86_64
           force-avd-creation: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
-          cores: 2
+          script: |
+            adb wait-for-device
+            adb shell input keyevent 82
+            echo "Emulator started"
           avd-name: test
-          emulator-boot-timeout: 600
           disable-animations: true
           enable-hw-keyboard: false
-          channel: stable
+          emulator-boot-timeout: 600
 
-      - name: Run Maven tests
-        run: mvn clean test
+      - name: Build and run Maven tests
+        run: |
+          mvn clean test
 
-      - name: Stop Android Emulator
+      - name: Kill emulator
         run: adb -s emulator-5554 emu kill
