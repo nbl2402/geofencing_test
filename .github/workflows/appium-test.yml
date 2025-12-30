@@ -1,4 +1,4 @@
-name: Android Appium Tests
+name: Java Maven Appium Tests
 
 on:
   push:
@@ -7,65 +7,56 @@ on:
     branches: [main]
 
 jobs:
-  android-emulator:
+  android-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
     env:
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
-      ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:$PATH
+      ANDROID_HOME: ${{ runner.workspace }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ runner.workspace }}/android-sdk
+      ANDROID_AVD_HOME: ${{ runner.workspace }}/.android/avd
+      PATH: ${{ runner.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ runner.workspace }}/android-sdk/platform-tools:${PATH}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install required packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unzip tar qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager
-
-      - name: Setup Java
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
-          distribution: temurin
-          java-version: 17
+          java-version: '17'
+          distribution: 'temurin'
 
-      - name: Download Android command line tools
+      - name: Install Android SDK dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip tar libgl1-mesa-dev
           mkdir -p $ANDROID_HOME/cmdline-tools
           cd $ANDROID_HOME/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
           unzip cmdline-tools.zip
           mv cmdline-tools latest
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "emulator" "system-images;android-33;google_apis;x86_64"
 
-      - name: Accept Android licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+      - name: Create and start Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          cores: 2
+          avd-name: test
+          emulator-boot-timeout: 600
+          disable-animations: true
+          enable-hw-keyboard: false
+          channel: stable
 
-      - name: Install SDK components
-        run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64" "build-tools;33.0.0"
+      - name: Run Maven tests
+        run: mvn clean test
 
-      - name: Create Android emulator
-        run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
-
-      - name: Start emulator
-        run: |
-          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
-          adb wait-for-device
-          adb shell input keyevent 82
-
-      - name: Verify emulator
-        run: adb devices
-
-      - name: Run Appium tests
-        run: |
-          npm install -g appium
-          appium & sleep 10
-          ./gradlew clean test # hoặc chạy command của bạn để chạy test Java/Appium
-
-      - name: Stop emulator
+      - name: Stop Android Emulator
         run: adb -s emulator-5554 emu kill
