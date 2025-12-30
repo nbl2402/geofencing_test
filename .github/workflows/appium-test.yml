@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 50
 
     steps:
-      # 1️⃣ Checkout code
+      # 1️⃣ Checkout repo
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -29,22 +29,22 @@ jobs:
       - name: Setup Android SDK
         run: |
           export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH
+          export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
 
           mkdir -p $ANDROID_HOME/cmdline-tools
-          
+
           # Download command line tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          
+
           # Unzip vào tmp rồi mv vào latest
           unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools/tmp
           mkdir -p $ANDROID_HOME/cmdline-tools/latest
           mv $ANDROID_HOME/cmdline-tools/tmp/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
           rm -rf $ANDROID_HOME/cmdline-tools/tmp
-          
-          # Cập nhật PATH để sdkmanager hoạt động
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-          
+
+          # Update PATH để sdkmanager nhận
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+
           # Cài platform-tools, build-tools, system image ARM
           yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;arm64-v8a"
 
@@ -57,16 +57,16 @@ jobs:
         env:
           ANDROID_AVD_HOME: $HOME/.android/avd
           ANDROID_HOME: $HOME/android-sdk
-          PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/emulator:$HOME/android-sdk/platform-tools:$PATH
+          PATH: $PATH:$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/emulator:$HOME/android-sdk/platform-tools
         run: |
           mkdir -p $ANDROID_AVD_HOME
-          
+
           # Tạo AVD ARM
           echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
-          
+
           # Start emulator in background
           $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
-          
+
           # Chờ emulator boot
           adb wait-for-device
           adb shell input keyevent 82
