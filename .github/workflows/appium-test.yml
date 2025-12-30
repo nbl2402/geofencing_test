@@ -1,26 +1,27 @@
-name: Android Appium Tests
+name: Android CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
 
 jobs:
   android-tests:
+    # Dùng container chuẩn Android + Maven để tránh lỗi tar / sudo / adb
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/reactivecircus/android-emulator:latest
+      options: --privileged   # cần cho emulator
 
     env:
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      ANDROID_HOME: /opt/android-sdk
+      ANDROID_SDK_ROOT: /opt/android-sdk
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:$PATH
+      PATH: /opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:${PATH}
 
     steps:
-      - name: Install tar and dependencies
-        run: sudo apt-get update && sudo apt-get install -y tar wget unzip qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
-
       # Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -32,26 +33,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # Install Android SDK command-line tools
-      - name: Install Android SDK
-        run: |
-          mkdir -p $ANDROID_HOME/cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
-          rm cmdline-tools.zip
-          yes | $ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;arm64-v8a"
-
-      # Accept licenses
-      - name: Accept SDK licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager --licenses
-
-      # Create & start ARM64 emulator
-      - name: Create and start ARM64 emulator
+      # Start emulator headless
+      - name: Create and start emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
           target: google_apis
-          arch: arm64-v8a
+          arch: x86_64
           force-avd-creation: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           script: |
@@ -61,12 +49,8 @@ jobs:
           cores: 2
           avd-name: test
           emulator-boot-timeout: 600
-          emulator-port: 5554
           disable-animations: true
-          disable-spellchecker: false
-          enable-hw-keyboard: false
-          channel: stable
 
       # Run Maven tests
-      - name: Run Appium tests
+      - name: Run Maven tests
         run: mvn clean test
