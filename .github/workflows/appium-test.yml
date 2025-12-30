@@ -59,6 +59,20 @@ jobs:
           enable-hw-keyboard: false
           channel: stable
 
+      - name: Wait for emulator to be fully ready
+        run: |
+          echo "Waiting for emulator to finish booting..."
+          timeout=0
+          until adb shell getprop sys.boot_completed | grep -m 1 '1'; do
+            sleep 5
+            timeout=$((timeout + 5))
+            if [ $timeout -gt 120 ]; then
+              echo "Emulator boot timeout!"
+              exit 1
+            fi
+          done
+          echo "Emulator is ready"
+
       - name: Build and run tests with Maven
         run: |
           mvn clean install
