@@ -11,7 +11,7 @@ on:
 jobs:
   android-appium:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 60
 
     env:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
@@ -29,7 +29,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3️⃣ Setup Android SDK
+      # 3️⃣ Setup Android SDK manually
       - name: Setup Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
@@ -48,24 +48,24 @@ jobs:
           # Make executables runnable
           chmod +x $ANDROID_HOME/cmdline-tools/latest/bin/*
 
-          # Append PATH trong run block
+          # Append PATH tạm thời
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
 
-          # Update sdkmanager & install packages
+          # Update sdkmanager & install required packages
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --update
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             "platform-tools" \
             "platforms;android-33" \
             "build-tools;33.0.2" \
-            "system-images;android-33;google_apis;arm64-v8a"
+            "system-images;android-33;google_apis;x86_64"
 
-      # 4️⃣ Create & Start Emulator
+      # 4️⃣ Create & Start Emulator (x86_64 + software GPU)
       - name: Create and Start Emulator
         run: |
           mkdir -p $ANDROID_AVD_HOME
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-            -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
-          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
+            -n test -k "system-images;android-33;google_apis;x86_64" --force
+          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
           $ANDROID_HOME/platform-tools/adb wait-for-device
           $ANDROID_HOME/platform-tools/adb shell input keyevent 82
           echo "Emulator started"
