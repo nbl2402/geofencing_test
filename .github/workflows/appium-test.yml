@@ -11,7 +11,7 @@ on:
 jobs:
   android-appium:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 60
 
     steps:
       # 1️⃣ Checkout repo
@@ -40,14 +40,11 @@ jobs:
           mv $ANDROID_HOME/cmdline-tools/tmp/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
           rm -rf $ANDROID_HOME/cmdline-tools/tmp
 
-          # Update PATH để sdkmanager và avdmanager hoạt động
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
-
           # Cài platform-tools, build-tools, system image ARM
-          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;arm64-v8a"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;arm64-v8a"
 
       # 4️⃣ Accept SDK licenses
-      - name: Accept Android SDK licenses
+      - name: Accept SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
       # 5️⃣ Create & start emulator (ARM)
@@ -56,20 +53,17 @@ jobs:
           ANDROID_AVD_HOME: $HOME/.android/avd
           ANDROID_HOME: $HOME/android-sdk
         run: |
-          # Append PATH trong run để tránh ghi đè PATH hệ thống
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
-          
           mkdir -p $ANDROID_AVD_HOME
 
-          # Tạo AVD ARM
-          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
+          # Tạo AVD bằng đường dẫn đầy đủ
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
 
-          # Start emulator in background
+          # Start emulator bằng đường dẫn đầy đủ
           $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
 
           # Chờ emulator boot xong
-          adb wait-for-device
-          adb shell input keyevent 82
+          $ANDROID_HOME/platform-tools/adb wait-for-device
+          $ANDROID_HOME/platform-tools/adb shell input keyevent 82
           echo "Emulator started"
 
       # 6️⃣ Install Node.js dependencies & run Appium tests
@@ -83,4 +77,4 @@ jobs:
 
       # 7️⃣ Shutdown emulator
       - name: Shutdown emulator
-        run: adb -s emulator-5554 emu kill
+        run: $ANDROID_HOME/platform-tools/adb -s emulator-5554 emu kill
