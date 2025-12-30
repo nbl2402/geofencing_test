@@ -34,13 +34,13 @@ jobs:
           # Download command line tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
 
-          # Unzip vào tmp rồi mv vào latest
+          # Unzip vào tmp rồi mv vào latest để fix đường dẫn
           unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools/tmp
           mkdir -p $ANDROID_HOME/cmdline-tools/latest
           mv $ANDROID_HOME/cmdline-tools/tmp/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
           rm -rf $ANDROID_HOME/cmdline-tools/tmp
 
-          # Update PATH để sdkmanager và avdmanager hoạt động
+          # Update PATH tạm thời
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
 
           # Install platform-tools, build-tools, system image ARM
@@ -60,10 +60,10 @@ jobs:
           ANDROID_AVD_HOME: $HOME/.android/avd
           ANDROID_HOME: $HOME/android-sdk
         run: |
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
           mkdir -p $ANDROID_AVD_HOME
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
 
-          # Tạo AVD ARM
+          # Tạo AVD ARM bằng đường dẫn đầy đủ
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
 
@@ -81,7 +81,7 @@ jobs:
           npm install -g appium
           npm install
           npx appium --log-level error &
-          sleep 15
+          sleep 15   # wait Appium server start
           npm run test:android
 
       # 7️⃣ Shutdown emulator
