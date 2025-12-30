@@ -14,66 +14,46 @@ jobs:
     timeout-minutes: 40
 
     steps:
-      # Checkout repo
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Setup Java
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
 
-      # Setup Android SDK minimal
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
         with:
           api-level: 33
           build-tools: 33.0.2
-          ndk: false
           emulator: true
 
-      # Accept SDK licenses
-      - name: Accept Android SDK licenses
+      - name: Accept SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      # Setup Android Emulator
-      - name: Setup Android Emulator
+      - name: Install system image
         run: |
-          mkdir -p $HOME/.android/avd
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;x86_64"
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-          -n test -k "system-images;android-33;google_apis;x86_64" --force
-          $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
-          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
-          adb wait-for-device
-          adb shell input keyevent 82
 
-      # Install the system image
-      - name: Install Android System Image
-        run: |
-            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;x86_64"
-
-      # Create and start emulator
       - name: Create and start emulator
+        env:
+          ANDROID_AVD_HOME: $HOME/.android/avd
         run: |
+          mkdir -p $ANDROID_AVD_HOME
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
           $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
           adb wait-for-device
           adb shell input keyevent 82
 
-      # Run your Appium tests
       - name: Run Appium Tests
         run: |
-          # Ensure Node.js & Appium installed if not in project
           npm install -g appium
           npm install
-          # Run tests (adjust command to your test runner)
           npx appium --log-level error &
           sleep 10
           npm run test:android
 
-      # Stop emulator
       - name: Shutdown emulator
         run: adb -s emulator-5554 emu kill
