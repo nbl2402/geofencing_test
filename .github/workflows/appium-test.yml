@@ -14,11 +14,6 @@ jobs:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
-      PATH: |
-        ${{ github.workspace }}/android-sdk/platform-tools:
-        ${{ github.workspace }}/android-sdk/emulator:
-        ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:
-        $PATH
 
     steps:
       # Checkout code
