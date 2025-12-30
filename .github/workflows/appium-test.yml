@@ -38,6 +38,16 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
+      # Setup Android Emulator
+      - name: Setup Android Emulator
+        run: |
+          mkdir -p $HOME/.android/avd
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;x86_64"
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
+          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
+          adb wait-for-device
+          adb shell input keyevent 82
+
       # Install the system image
       - name: Install Android System Image
         run: |
