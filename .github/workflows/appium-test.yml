@@ -1,52 +1,53 @@
-name: Appium Android CI - Java
+name: Android CI - ARM Emulator
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  android-appium:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
 
     env:
-      ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
+      ANDROID_HOME: ${{ runner.workspace }}/android-sdk
+      ANDROID_AVD_HOME: ${{ runner.workspace }}/.android/avd
+      JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.17-10/x64
+      PATH: ${{ env.PATH }}:${{ env.ANDROID_HOME }}/emulator:${{ env.ANDROID_HOME }}/platform-tools:${{ env.ANDROID_HOME }}/cmdline-tools/latest/bin
 
     steps:
-      # 1️⃣ Checkout repo
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Java
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 17
-
-      # 3️⃣ Setup Android Emulator
-      - name: Setup Android Emulator
+      - name: Setup Android SDK
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
           target: google_apis
-          arch: x86_64
+          arch: arm64-v8a
           force-avd-creation: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           script: |
             # Wait for emulator to boot
-            adb wait-for-device
-            adb shell input keyevent 82
+            echo "Waiting for emulator to boot..."
+            $ANDROID_HOME/platform-tools/adb wait-for-device
+            $ANDROID_HOME/platform-tools/adb shell input keyevent 82
             echo "Emulator started"
+          cores: 2
+          avd-name: test
+          emulator-boot-timeout: 900
+          disable-animations: true
+          disable-linux-hw-accel: true
+          enable-hw-keyboard: false
+          channel: stable
 
-      # 4️⃣ Run Appium Java tests
-      - name: Run Appium Java Tests
+      - name: Accept licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install SDK packages
         run: |
-          # Example using Maven; thay đổi tùy theo project bạn
-          mvn clean test -DskipTests=false
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;arm64-v8a"
 
+      - name: Build & Test Java project
+        run: ./gradlew clean build connectedCheck
