@@ -2,61 +2,60 @@ name: Android Appium CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  android-appium:
+  android-emulator-test:
     runs-on: ubuntu-latest
     env:
-      ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
-      JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.17-10/x64
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH
-
+      ANDROID_HOME: ${{ runner.workspace }}/android-sdk
+      ANDROID_AVD_HOME: ${{ runner.workspace }}/.android/avd
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      PATH: ${{ runner.workspace }}/android-sdk/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y unzip wget curl libgl1-mesa-dev libpulse0 nodejs npm
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip tar libncurses5 libstdc++6 libgtk-3-0 libpulse0 libnss3 libx11-xcb1 libxcb1 libxrandr2 libxss1 libglu1-mesa xvfb
+          java -version
 
       - name: Setup Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
           cd $ANDROID_HOME/cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip -q cmdline-tools.zip
-          mv cmdline-tools latest
+          # Download cmdline-tools if not exists
+          if [ ! -f commandlinetools-linux-9477386_latest.zip ]; then
+            wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          fi
+          unzip -q commandlinetools-linux-9477386_latest.zip -d tmp
+          mkdir -p latest
+          mv tmp/cmdline-tools/* latest/
+          rm -rf tmp
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "emulator" "system-images;android-33;google_apis;arm64-v8a"
+          sdkmanager --install "platform-tools" "emulator" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;x86_64"
 
-      - name: Create and start ARM emulator
+      - name: Create Android Emulator
         run: |
           mkdir -p $ANDROID_AVD_HOME
-          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
-          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
+
+      - name: Start Emulator
+        run: |
+          nohup $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
           $ANDROID_HOME/platform-tools/adb wait-for-device
           $ANDROID_HOME/platform-tools/adb shell input keyevent 82
           echo "Emulator started"
 
-      - name: Install Appium
-        run: npm install -g appium
-
-      - name: Start Appium server
+      - name: Run Appium Tests
         run: |
-          appium --port 4723 &
-          APP_PID=$!
-          echo $APP_PID > appium.pid
-          sleep 10  # đợi Appium ready
-
-      - name: Run Appium tests
-        run: |
-          # Chạy test script của bạn (Java, Node.js, hoặc Gradle)
-          # Ví dụ nếu dùng Java TestNG:
-          ./gradlew connectedAndroidTest
-
-      - name: Stop Appium server
-        run: |
-          kill $(cat appium.pid)
+          # Start Appium server
+          npm install -g appium
+          appium & 
+          sleep 10
+          # Run your test script
+          ./gradlew connectedAndroidTest  # Hoặc command chạy test Java/Appium của bạn
