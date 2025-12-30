@@ -20,6 +20,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Free disk space
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet
