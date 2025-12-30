@@ -1,4 +1,4 @@
-name: Android CI
+name: Android Tests CI
 
 on:
   push:
@@ -8,49 +8,58 @@ on:
 
 jobs:
   android-tests:
-    # Dùng container chuẩn Android + Maven để tránh lỗi tar / sudo / adb
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/reactivecircus/android-emulator:latest
-      options: --privileged   # cần cho emulator
 
     env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      ANDROID_HOME: /opt/android-sdk
-      ANDROID_SDK_ROOT: /opt/android-sdk
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
-      PATH: /opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:${PATH}
+      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${{ github.workspace }}/android-sdk/emulator:$PATH
 
     steps:
-      # Checkout repo
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tar wget unzip qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils openjdk-17-jdk
+
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Setup Java (Maven)
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          distribution: temurin
+          java-version: 17
 
-      # Start emulator headless
-      - name: Create and start emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          force-avd-creation: true
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
-          script: |
-            adb wait-for-device
-            adb shell input keyevent 82
-            echo "Emulator started"
-          cores: 2
-          avd-name: test
-          emulator-boot-timeout: 600
-          disable-animations: true
+      - name: Download Android SDK Command Line Tools
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip
+          mv cmdline-tools latest
+          rm cmdline-tools.zip
 
-      # Run Maven tests
-      - name: Run Maven tests
-        run: mvn clean test
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64"
+
+      - name: Create AVD
+        run: |
+          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
+
+      - name: Start Emulator
+        run: |
+          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+          echo "Waiting for emulator to start..."
+          adb wait-for-device
+          adb shell input keyevent 82
+          sleep 30
+          adb devices
+
+      - name: Build & run tests
+        run: |
+          mvn clean test
