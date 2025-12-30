@@ -1,13 +1,13 @@
-name: Java + Appium Test Workflow
+name: Android Appium CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
-  android-tests:
+  build-and-test:
     runs-on: ubuntu-latest
 
     env:
@@ -15,16 +15,16 @@ jobs:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${{ github.workspace }}/android-sdk/emulator:${{ env.PATH }}
+      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${{ github.workspace }}/android-sdk/emulator:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Install essential tools
+      - name: Install required packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y tar unzip wget lib32stdc++6 lib32z1 qemu-kvm
+          sudo apt-get install -y tar unzip wget curl git
 
       - name: Setup Android SDK
         run: |
@@ -32,24 +32,29 @@ jobs:
           cd $ANDROID_HOME/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
           unzip cmdline-tools.zip
-          rm cmdline-tools.zip
           mv cmdline-tools latest
-
-      - name: Accept licenses and install SDK packages
-        run: |
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64" "build-tools;33.0.2"
+          sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64"
 
-      - name: Create and start AVD
+      - name: Create Android Emulator
         run: |
           echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
           $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
           adb wait-for-device
           adb shell input keyevent 82
+          echo "Emulator started"
 
-      - name: Run Maven tests
-        run: mvn clean test
+      - name: Start Appium server
+        run: |
+          npm install -g appium
+          appium --log-level error &
+          sleep 5
 
-      - name: Stop emulator
+      - name: Build and run tests with Maven
+        run: |
+          mvn clean test
+
+      - name: Shutdown Emulator
         if: always()
-        run: adb -s emulator-5554 emu kill
+        run: |
+          adb -s emulator-5554 emu kill
