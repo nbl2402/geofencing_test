@@ -38,6 +38,11 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
+      # Install the system image
+      - name: Install Android System Image
+        run: |
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;x86_64"
+
       # Create and start emulator
       - name: Create and start emulator
         run: |
