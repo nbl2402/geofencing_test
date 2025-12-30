@@ -1,4 +1,4 @@
-name: Appium Android CI
+name: Appium Android CI - Java
 
 on:
   push:
@@ -29,19 +29,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3️⃣ Setup Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
-
-      # 4️⃣ Install Appium and project dependencies
-      - name: Install Appium & dependencies
-        run: |
-          npm install -g appium
-          npm install
-
-      # 5️⃣ Setup Android Emulator using android-emulator-runner
+      # 3️⃣ Setup Android Emulator
       - name: Setup Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -56,9 +44,9 @@ jobs:
             adb shell input keyevent 82
             echo "Emulator started"
 
-      # 6️⃣ Run Appium tests
-      - name: Run Appium Tests
+      # 4️⃣ Run Appium Java tests
+      - name: Run Appium Java Tests
         run: |
-          npx appium --log-level error &
-          sleep 10
-          npm run test:android
+          # Example using Maven; thay đổi tùy theo project bạn
+          mvn clean test -DskipTests=false
+
