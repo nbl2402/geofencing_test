@@ -28,22 +28,26 @@ jobs:
       # 3️⃣ Setup Android SDK
       - name: Setup Android SDK
         run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH
+          
+          mkdir -p $ANDROID_HOME/cmdline-tools
           
           # Download command line tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
           
-          # Unzip thẳng vào latest
-          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools/latest
+          # Unzip vào tmp để fix cấu trúc
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools/tmp
+          mkdir -p $ANDROID_HOME/cmdline-tools/latest
+          mv $ANDROID_HOME/cmdline-tools/tmp/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
+          rm -rf $ANDROID_HOME/cmdline-tools/tmp
           
-          # Install SDK packages
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;arm64-v8a"
+          # Cài platform, build-tools, system image ARM
+          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;arm64-v8a"
 
-      # 4️⃣ Accept licenses
+      # 4️⃣ Accept SDK licenses
       - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
       # 5️⃣ Create & start emulator (ARM)
       - name: Create and start emulator
@@ -63,7 +67,7 @@ jobs:
           adb shell input keyevent 82
           echo "Emulator started"
 
-      # 6️⃣ Install dependencies & start Appium
+      # 6️⃣ Install Node.js dependencies & run Appium tests
       - name: Run Appium Tests
         run: |
           npm install -g appium
