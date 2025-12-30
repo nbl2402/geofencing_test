@@ -1,13 +1,13 @@
-name: Java Appium Tests
+name: Java + Appium Test Workflow
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
 
 jobs:
-  build-and-test:
+  android-tests:
     runs-on: ubuntu-latest
 
     env:
@@ -15,48 +15,41 @@ jobs:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${PATH}
+      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:${{ github.workspace }}/android-sdk/platform-tools:${{ github.workspace }}/android-sdk/emulator:${{ env.PATH }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install dependencies
+      - name: Install essential tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y unzip tar curl wget lib32stdc++6 lib32z1
-          sudo apt-get install -y openjdk-17-jdk
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager
+          sudo apt-get install -y tar unzip wget lib32stdc++6 lib32z1 qemu-kvm
 
       - name: Setup Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
-          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64"
+          unzip cmdline-tools.zip
+          rm cmdline-tools.zip
+          mv cmdline-tools latest
 
-      - name: Create and start emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          force-avd-creation: true
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
-          script: |
-            adb wait-for-device
-            adb shell input keyevent 82
-            echo "Emulator started"
-          avd-name: test
-          disable-animations: true
-          enable-hw-keyboard: false
-          emulator-boot-timeout: 600
-
-      - name: Build and run Maven tests
+      - name: Accept licenses and install SDK packages
         run: |
-          mvn clean test
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64" "build-tools;33.0.2"
 
-      - name: Kill emulator
+      - name: Create and start AVD
+        run: |
+          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
+          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+          adb wait-for-device
+          adb shell input keyevent 82
+
+      - name: Run Maven tests
+        run: mvn clean test
+
+      - name: Stop emulator
+        if: always()
         run: adb -s emulator-5554 emu kill
