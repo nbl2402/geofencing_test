@@ -47,20 +47,20 @@ jobs:
       - name: Accept Android licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      # Install required SDK packages
-      - name: Install SDK packages
+      # Install ARM64 system image
+      - name: Install ARM64 system image
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;arm64-v8a"
 
-      # Create AVD
-      - name: Create AVD
+      # Create ARM64 AVD
+      - name: Create ARM64 AVD
         run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test-arm64 -k "system-images;android-33;google_apis;arm64-v8a" --force
 
       # Start emulator
       - name: Start Emulator
         run: |
-          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+          $ANDROID_HOME/emulator/emulator -avd test-arm64 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-metrics &
           echo "Waiting for emulator to start..."
           $ANDROID_HOME/platform-tools/adb wait-for-device
           $ANDROID_HOME/platform-tools/adb shell input keyevent 82
