@@ -14,6 +14,11 @@ jobs:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
+      PATH: |
+        ${{ github.workspace }}/android-sdk/platform-tools:
+        ${{ github.workspace }}/android-sdk/emulator:
+        ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:
+        $PATH
 
     steps:
       # Checkout code
@@ -47,26 +52,48 @@ jobs:
       - name: Accept Android licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      # Install ARM64 system image
-      - name: Install ARM64 system image
+      # Install Android SDK packages (ARM64 – no KVM)
+      - name: Install Android SDK packages
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;arm64-v8a"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platform-tools" \
+            "platforms;android-33" \
+            "emulator" \
+            "system-images;android-33;google_apis;arm64-v8a"
+
+      # Verify Android SDK
+      - name: Verify Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -la $ANDROID_HOME
+          $ANDROID_HOME/platform-tools/adb version
+          $ANDROID_HOME/emulator/emulator -version
 
       # Create ARM64 AVD
       - name: Create ARM64 AVD
         run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test-arm64 -k "system-images;android-33;google_apis;arm64-v8a" --force
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager \
+            create avd -n test-arm64 \
+            -k "system-images;android-33;google_apis;arm64-v8a" \
+            --force
 
       # Start emulator
       - name: Start Emulator
         run: |
-          $ANDROID_HOME/emulator/emulator -avd test-arm64 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-metrics &
-          echo "Waiting for emulator to start..."
+          $ANDROID_HOME/emulator/emulator \
+            -avd test-arm64 \
+            -no-window \
+            -no-audio \
+            -no-boot-anim \
+            -gpu swiftshader_indirect \
+            -no-metrics &
+          echo "Waiting for emulator..."
           $ANDROID_HOME/platform-tools/adb wait-for-device
           $ANDROID_HOME/platform-tools/adb shell input keyevent 82
           sleep 30
           $ANDROID_HOME/platform-tools/adb devices
+      
 
-      # Build & run tests
+        # Build & run tests
       - name: Build & run tests
         run: mvn clean test
