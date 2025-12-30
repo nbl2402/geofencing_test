@@ -11,49 +11,67 @@ on:
 jobs:
   android-appium:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
 
     steps:
+      # 1️⃣ Checkout repo
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2️⃣ Setup Java
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
 
+      # 3️⃣ Setup Android SDK
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
-        with:
-          api-level: 33
-          build-tools: 33.0.2
-          emulator: true
-
-      - name: Accept SDK licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-
-      - name: Install system image
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-33;google_apis;x86_64"
+          mkdir -p $HOME/android-sdk
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH
 
+          # Download command line tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d $ANDROID_HOME
+          mkdir -p $ANDROID_HOME/cmdline-tools/latest
+          mv $ANDROID_HOME/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
+
+          # Install SDK packages
+          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "system-images;android-33;google_apis;arm64-v8a"
+
+      # 4️⃣ Accept licenses
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
+      # 5️⃣ Create & start emulator (ARM)
       - name: Create and start emulator
         env:
           ANDROID_AVD_HOME: $HOME/.android/avd
+          ANDROID_HOME: $HOME/android-sdk
+          PATH: $HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/emulator:$HOME/android-sdk/platform-tools:$PATH
         run: |
           mkdir -p $ANDROID_AVD_HOME
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
+          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
+          
+          # Start emulator in background
           $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
+          
+          # Wait until device is ready
           adb wait-for-device
           adb shell input keyevent 82
+          echo "Emulator started"
 
+      # 6️⃣ Install dependencies & start Appium
       - name: Run Appium Tests
         run: |
           npm install -g appium
           npm install
           npx appium --log-level error &
-          sleep 10
+          sleep 15   # wait Appium server start
           npm run test:android
 
+      # 7️⃣ Shutdown emulator
       - name: Shutdown emulator
         run: adb -s emulator-5554 emu kill
