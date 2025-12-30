@@ -1,68 +1,64 @@
-name: Android Appium Tests
+name: Run Java Selenium + Appium Tests
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
-  android-appium-tests:
+  android-emulator-tests:
     runs-on: ubuntu-latest
     env:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      PATH: ${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+      JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.17-10/x64
+      PATH: ${{ github.workspace }}/android-sdk/emulator:${{ github.workspace }}/android-sdk/tools/bin:${{ github.workspace }}/android-sdk/platform-tools:$PATH
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Install essential packages
-        run: sudo apt-get update && sudo apt-get install -y unzip wget tar lib32stdc++6 lib32z1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip wget tar lib32stdc++6 lib32z1 qemu-kvm
+          hash -r
+          which tar
+          tar --version
 
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Install Android Commandline Tools
+      - name: Setup Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O /tmp/cmdline-tools.zip
-          unzip -q /tmp/cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
-          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-          yes | sdkmanager --licenses
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          rm cmdline-tools.zip
+          yes | $ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager --licenses
+          $ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;x86_64"
 
-      - name: Install Android SDK packages
-        run: |
-          sdkmanager --install "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;x86_64" "build-tools;33.0.2"
+      - name: Create and start emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          script: |
+            adb wait-for-device
+            adb shell input keyevent 82
+            echo "Emulator started"
+          cores: 2
+          avd-name: test
+          emulator-boot-timeout: 600
+          disable-animations: true
+          disable-linux-hw-accel: true
 
-      - name: Create Android Emulator
-        run: |
-          echo no | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
-          $ANDROID_HOME/emulator/emulator -list-avds
-
-      - name: Start Emulator
-        run: |
-          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
-          adb wait-for-device
-          adb shell input keyevent 82
-          echo "Emulator started"
-
-      - name: Build project
-        run: ./gradlew clean assembleDebug
-
-      - name: Run Appium tests
+      - name: Start Appium server
         run: |
           npm install -g appium
-          npm install -g appium-doctor
-          appium-doctor --android
-          # Run your Java + Selenium + Appium tests here, ví dụ:
-          ./gradlew connectedAndroidTest
+          appium &
 
-      - name: Stop Emulator
-        if: always()
-        run: adb -s emulator-5554 emu kill
+      - name: Run Java tests
+        run: |
+          ./gradlew clean test
