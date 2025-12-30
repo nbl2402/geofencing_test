@@ -18,8 +18,8 @@ jobs:
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
 
     steps:
-      # 1️⃣ Checkout code
-      - name: Checkout repo
+      # 1️⃣ Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v3
 
       # 2️⃣ Setup Java
@@ -29,7 +29,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3️⃣ Setup Android SDK (unzip + move + install packages)
+      # 3️⃣ Setup Android SDK
       - name: Setup Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
@@ -40,7 +40,7 @@ jobs:
           # Unzip vào tmp
           unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools/tmp
 
-          # Di chuyển cmdline-tools ra latest
+          # Move cmdline-tools ra latest
           mkdir -p $ANDROID_HOME/cmdline-tools/latest
           mv $ANDROID_HOME/cmdline-tools/tmp/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
           rm -rf $ANDROID_HOME/cmdline-tools/tmp
@@ -48,29 +48,30 @@ jobs:
           # Make executables runnable
           chmod +x $ANDROID_HOME/cmdline-tools/latest/bin/*
 
-          # Append PATH tạm thời
+          # Append PATH trong run block
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
 
           # Update sdkmanager & install packages
-          yes | sdkmanager --update
-          yes | sdkmanager \
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --update
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             "platform-tools" \
             "platforms;android-33" \
             "build-tools;33.0.2" \
             "system-images;android-33;google_apis;arm64-v8a"
 
-      # 4️⃣ Create and start emulator
+      # 4️⃣ Create & Start Emulator
       - name: Create and Start Emulator
         run: |
           mkdir -p $ANDROID_AVD_HOME
-          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+            -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
           $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
-          adb wait-for-device
-          adb shell input keyevent 82
+          $ANDROID_HOME/platform-tools/adb wait-for-device
+          $ANDROID_HOME/platform-tools/adb shell input keyevent 82
           echo "Emulator started"
 
-      # 5️⃣ Install Node.js & Appium
-      - name: Setup Node.js and Appium
+      # 5️⃣ Setup Node.js & Appium
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
@@ -80,13 +81,13 @@ jobs:
           npm install -g appium
           npm install
 
-      # 6️⃣ Run Appium tests
+      # 6️⃣ Run Appium Tests
       - name: Run Appium Tests
         run: |
           npx appium --log-level error &
           sleep 10
           npm run test:android
 
-      # 7️⃣ Shutdown emulator
+      # 7️⃣ Shutdown Emulator
       - name: Shutdown Emulator
-        run: adb -s emulator-5554 emu kill
+        run: $ANDROID_HOME/platform-tools/adb -s emulator-5554 emu kill
