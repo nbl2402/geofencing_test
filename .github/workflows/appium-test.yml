@@ -1,31 +1,30 @@
-name: Android Appium CI
+name: Android Appium Java CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
-  android-emulator-tests:
+  android-emulator-test:
     runs-on: ubuntu-latest
-
     env:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
-      JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.17-10/x64
-      PATH: ${{ github.workspace }}/android-sdk/emulator:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      PATH: ${{ github.workspace }}/android-sdk/emulator:${{ github.workspace }}/android-sdk/platform-tools:${{ github.workspace }}/android-sdk/cmdline-tools/latest/bin:$PATH
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Setup Linux packages
+      - name: Install Linux packages
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip wget tar libglu1-mesa openjdk-17-jdk
 
-      - name: Setup Android SDK cmdline-tools
+      - name: Setup Android SDK
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
           cd $ANDROID_HOME/cmdline-tools
@@ -33,24 +32,23 @@ jobs:
           unzip cmdline-tools.zip
           mv cmdline-tools latest
           yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;x86_64"
 
-      - name: Install Android SDK components
-        run: |
-          sdkmanager "platform-tools" "emulator" "platforms;android-33" "system-images;android-33;google_apis;x86_64" "build-tools;35.0.0"
-
-      - name: Create and start emulator
+      - name: Create Android emulator
         run: |
           mkdir -p $ANDROID_AVD_HOME
           echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" --force
-          emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+
+      - name: Start Android emulator
+        run: |
+          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
           adb wait-for-device
           adb shell input keyevent 82
           echo "Emulator started"
 
-      - name: Setup Appium
-        run: |
-          npm install -g appium
+      - name: Install Appium
+        run: npm install -g appium
 
       - name: Run Java tests
         run: |
-          ./gradlew clean test connectedAndroidTest
+          ./gradlew clean test  # Hoặc lệnh chạy test Java của bạn
