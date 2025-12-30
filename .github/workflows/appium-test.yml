@@ -1,4 +1,4 @@
-name: Appium Test
+name: Appium Android CI
 
 on:
   push:
@@ -11,11 +11,15 @@ on:
 jobs:
   android-appium:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 50
+
+    env:
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
 
     steps:
-      # 1️⃣ Checkout repo
-      - name: Checkout code
+      # 1️⃣ Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       # 2️⃣ Setup Java
@@ -25,67 +29,64 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # 3️⃣ Setup Android SDK
+      # 3️⃣ Setup Android SDK (unzip + move + install packages)
       - name: Setup Android SDK
         run: |
-          export ANDROID_HOME=$HOME/android-sdk
           mkdir -p $ANDROID_HOME/cmdline-tools
-          
+
           # Download command line tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          
+
           # Unzip vào tmp
           unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools/tmp
-          
+
           # Di chuyển cmdline-tools ra latest
           mkdir -p $ANDROID_HOME/cmdline-tools/latest
           mv $ANDROID_HOME/cmdline-tools/tmp/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/
           rm -rf $ANDROID_HOME/cmdline-tools/tmp
-          
-          # Make sure executables are runnable
+
+          # Make executables runnable
           chmod +x $ANDROID_HOME/cmdline-tools/latest/bin/*
-          
+
           # Append PATH tạm thời
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
-          
-          # Update sdkmanager & install required packages
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --update
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+
+          # Update sdkmanager & install packages
+          yes | sdkmanager --update
+          yes | sdkmanager \
             "platform-tools" \
             "platforms;android-33" \
             "build-tools;33.0.2" \
             "system-images;android-33;google_apis;arm64-v8a"
 
-      # 4️⃣ Accept SDK licenses
-      - name: Accept SDK licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-
-      # 5️⃣ Create & start emulator (ARM)
-      - name: Create and start emulator
-        env:
-          ANDROID_AVD_HOME: $HOME/.android/avd
-          ANDROID_HOME: $HOME/android-sdk
+      # 4️⃣ Create and start emulator
+      - name: Create and Start Emulator
         run: |
           mkdir -p $ANDROID_AVD_HOME
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
-
-          # Tạo AVD bằng đường dẫn đầy đủ
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-            -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
-
-          # Start emulator
+          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;arm64-v8a" --force
           $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
-
-          # Chờ emulator boot xong
-          $ANDROID_HOME/platform-tools/adb wait-for-device
-          $ANDROID_HOME/platform-tools/adb shell input keyevent 82
+          adb wait-for-device
+          adb shell input keyevent 82
           echo "Emulator started"
+
+      # 5️⃣ Install Node.js & Appium
+      - name: Setup Node.js and Appium
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install Appium
+        run: |
+          npm install -g appium
+          npm install
 
       # 6️⃣ Run Appium tests
       - name: Run Appium Tests
         run: |
-          npm install -g appium
-          npm install
           npx appium --log-level error &
-          sleep 15
-          npm run
+          sleep 10
+          npm run test:android
+
+      # 7️⃣ Shutdown emulator
+      - name: Shutdown Emulator
+        run: adb -s emulator-5554 emu kill
