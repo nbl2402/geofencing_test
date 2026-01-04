@@ -19,7 +19,8 @@ pipeline {
         stage('Run Tests') {
             steps {
                 sh '''
-                docker run --rm -v $PWD:/app -v $HOME/.m2:/root/.m2 -w /app maven:3.9.3-openjdk-17 mvn clean test
+                docker run --rm -v $WORKSPACE:/app -v $HOME/.m2:/root/.m2 -w /app maven:3.9.3-openjdk-17 mvn clean test
+                ls -l target/surefire-reports
                 '''
             }
         }
