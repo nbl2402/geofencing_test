@@ -24,6 +24,11 @@ public class WaitHelpers {
         wait.until(ExpectedConditions.visibilityOf(webElement));
     }
 
+    public static void waitForTextDisplayed(WebElement webElement, String expected)
+    {
+        wait.until(ExpectedConditions.textToBePresentInElement(webElement, expected));
+    }
+
     public static void waitForSeconds(int seconds)
     {
         try {
