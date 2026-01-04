@@ -25,8 +25,8 @@ pipeline {
 
     post {
         always {
-            junit '**/target/surefire-reports/*.xml'
-
+            sh 'ls -l target/surefire-reports'
+            junit 'target/surefire-reports/*.xml'
             echo 'Pipeline finished'
         }
         success {
