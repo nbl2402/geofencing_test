@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+            docker {
+                image 'maven:3.9.3-openjdk-17'
+                args '-v $HOME/.m2:/root/.m2'
+            }
+        }
 
     environment {
         GIT_CREDENTIALS_ID = '5b1f3100-599b-456e-84d3-b92de8c86f59' // ID credential GitHub trong Jenkins
