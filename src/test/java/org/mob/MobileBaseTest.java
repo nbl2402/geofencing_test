@@ -1,7 +1,6 @@
 package org.mob;
 
 import io.appium.java_client.android.AndroidDriver;
-import org.openqa.selenium.html5.Location;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterMethod;
@@ -30,16 +29,5 @@ public class MobileBaseTest
         logger.info("Close Mobile app");
         if (driver != null)
             driver.quit();
-    }
-
-    public void setLocation(double lat, double lng)
-    {
-        String cmd = String.format("adb emu geo fix %f %f", lng, lat);
-
-        try {
-            Runtime.getRuntime().exec(cmd);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

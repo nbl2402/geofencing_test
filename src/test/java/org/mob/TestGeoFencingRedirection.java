@@ -1,11 +1,9 @@
 package org.mob;
 
-import org.openqa.selenium.html5.Location;
 import org.pageObjects.DirectionPage;
 import org.pageObjects.HomePage;
 import org.testng.annotations.Test;
 import org.utilities.MapEnums;
-import org.utilities.WaitHelpers;
 
 public class TestGeoFencingRedirection extends MobileBaseTest{
 
