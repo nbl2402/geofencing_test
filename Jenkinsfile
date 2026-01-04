@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-            docker {
-                image 'maven:3.9.3-openjdk-17'
-                args '-v $HOME/.m2:/root/.m2'
-            }
-        }
+    agent any
 
     environment {
         GIT_CREDENTIALS_ID = '5b1f3100-599b-456e-84d3-b92de8c86f59' // ID credential GitHub trong Jenkins
@@ -23,7 +18,9 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                sh 'mvn clean test'
+                sh '''
+                docker run --rm -v $PWD:/app -v $HOME/.m2:/root/.m2 -w /app maven:3.9.3-openjdk-17 mvn clean test
+                '''
             }
         }
     }
