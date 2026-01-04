@@ -16,22 +16,16 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                sh 'mvn clean install -DskipTests'
-            }
-        }
-
         stage('Run Tests') {
             steps {
-                sh 'mvn test'
+                sh 'mvn clean test'
             }
         }
     }
 
     post {
         always {
-            publishTestNGResults 'target/surefire-reports/testng-results.xml'
+            junit '**/target/surefire-reports/*.xml'
 
             echo 'Pipeline finished'
         }
