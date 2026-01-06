@@ -1,10 +1,14 @@
 package org.mob;
 
+import listeners.TestListener;
 import org.pageObjects.DirectionPage;
 import org.pageObjects.HomePage;
+import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
-import org.utilities.MapEnums;
+import org.utilities.LogHelpers;
+import org.enumObjects.MapEnums;
 
+@Listeners(TestListener.class)
 public class TestGeoFencingRedirection extends MobileBaseTest{
 
     /**
@@ -18,13 +22,13 @@ public class TestGeoFencingRedirection extends MobileBaseTest{
     {
         HomePage homePage = new HomePage(driver);
 
-        logger.info("Validate allow access screen is displayed");
+        LogHelpers.logStep("Validate allow access screen is displayed");
         homePage.validateAllowAccessScreenDisplayed();
 
-        logger.info("Tap on 'Only This Time' option");
+        LogHelpers.logStep("Tap on 'Only This Time' option");
         homePage.selectAccessType(MapEnums.AccessType.ONLY_THIS_TIME);
 
-        logger.info("Validate Google Map is shown");
+        LogHelpers.logStep("Validate Google Map is shown");
         homePage.validateGoogleMapDisplayed();
     }
 
@@ -43,17 +47,17 @@ public class TestGeoFencingRedirection extends MobileBaseTest{
     {
         HomePage homePage = new HomePage(driver);
 
-        logger.info("Tap on 'Only This Time' option");
+        LogHelpers.logStep("Tap on 'Only This Time' option");
         homePage.selectAccessType(MapEnums.AccessType.ONLY_THIS_TIME);
 
-        logger.info("Tap on direction button");
+        LogHelpers.logStep("Tap on direction button");
         homePage.waitForGoogleMapDisplayed();
         DirectionPage directionPage = homePage.tapOnDirectionButton();
 
-        logger.info("Validate text displays correctly in start location field");
+        LogHelpers.logStep("Validate text displays correctly in start location field");
         directionPage.validateStartLocationFieldDisplayed("Your location");
 
-        logger.info("Validate text displays correctly in destination location field");
-        directionPage.validateDestinationLocationFieldDisplayed("Mensa am Hofgarten");
+        LogHelpers.logStep("Validate text displays correctly in destination location field");
+        directionPage.validateDestinationLocationFieldDisplayed("Invalid Value");
     }
 }

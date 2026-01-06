@@ -12,7 +12,6 @@ public class AssertHelpers {
 
     public static void assertElementText(WebElement webElement, String expect)
     {
-        WaitHelpers.waitForTextDisplayed(webElement, expect);
         Assert.assertEquals(webElement.getText(), expect);
     }
 }

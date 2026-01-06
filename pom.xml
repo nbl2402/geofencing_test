@@ -17,6 +17,7 @@
         <appium.version>8.5.1</appium.version>
         <testng.version>7.8.0</testng.version>
         <surefire.version>3.2.5</surefire.version>
+        <restassured.version>5.4.0</restassured.version>
     </properties>
 
     <dependencies>
@@ -47,6 +48,13 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>2.0.9</version>
+        </dependency>
+
+        <!-- RestAssured -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>${restassured.version}</version>
         </dependency>
 
     </dependencies>

@@ -7,7 +7,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.PageFactory;
 import org.utilities.AssertHelpers;
-import org.utilities.MapEnums;
+import org.enumObjects.MapEnums;
 import org.utilities.WaitHelpers;
 
 import java.time.Duration;

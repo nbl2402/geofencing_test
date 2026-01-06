@@ -35,7 +35,8 @@ public class DriverFactory {
         }
     }
 
-    public static List<String> getConnectedDevices() {
+    public static List<String> getConnectedDevices()
+    {
         List<String> devices = new ArrayList<>();
         Process process = null;
         try {

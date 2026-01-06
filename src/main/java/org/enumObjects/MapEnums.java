@@ -1,8 +1,9 @@
-package org.utilities;
+package org.enumObjects;
 
 public class MapEnums {
 
-    public enum AccessType {
+    public enum AccessType
+    {
         WHILE_USING_APP("permission_allow_foreground_only_button"),
         ONLY_THIS_TIME("permission_allow_one_time_button"),
         DO_NOT_ALLOW("permission_deny_button");
