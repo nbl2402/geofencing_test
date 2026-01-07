@@ -9,6 +9,20 @@
 - Deploy Jenkins in Docker locally to run test cases
 - Integrated scripts with Jira to automatically create bug ticket whenever test case fails
 
+**DockerFile**
+```
+    FROM jenkins/jenkins:lts
+
+    USER root
+    RUN apt-get update && \
+        apt-get install -y git && \
+        rm -rf /var/lib/apt/lists/*
+
+    USER jenkins
+
+    EXPOSE 8080 50000
+```
+
 ---
 ## How to run
 1. Run from Jenkins
