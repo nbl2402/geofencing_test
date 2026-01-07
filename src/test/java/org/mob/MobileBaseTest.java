@@ -14,7 +14,6 @@ public class MobileBaseTest
     @BeforeMethod
     public void setUp()
     {
-        LogHelpers.logStep("Launch Mobile app");
         driver = DriverFactory.createAndroidDriver();
         WaitHelpers.setDriver(driver);
     }

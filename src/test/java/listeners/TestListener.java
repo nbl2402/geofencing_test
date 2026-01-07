@@ -17,7 +17,7 @@ public class TestListener implements ITestListener {
     @Override
     public void onTestStart(ITestResult result)
     {
-        LogHelpers.logStep("====== Test Listener started ======");
-        LogHelpers.logStep("TEST STARTED: " + result.getMethod().getMethodName());
+        System.out.println("\n====== Test Listener started ======");
+        System.out.println("TEST STARTED: " + result.getMethod().getMethodName());
     }
 }

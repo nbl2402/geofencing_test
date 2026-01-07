@@ -6,7 +6,7 @@ import org.pageObjects.HomePage;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 import org.utilities.LogHelpers;
-import org.enumObjects.MapEnums;
+import org.utilities.MapEnums;
 
 @Listeners(TestListener.class)
 public class TestGeoFencingRedirection extends MobileBaseTest{
@@ -20,6 +20,7 @@ public class TestGeoFencingRedirection extends MobileBaseTest{
     @Test
     public void verifyGoogleMapDisplaysInHomeScreen()
     {
+        LogHelpers.logStep("Launch Mobile app");
         HomePage homePage = new HomePage(driver);
 
         LogHelpers.logStep("Validate allow access screen is displayed");
@@ -45,6 +46,7 @@ public class TestGeoFencingRedirection extends MobileBaseTest{
     @Test
     public void verifyDirectionDisplayedCorrectly()
     {
+        LogHelpers.logStep("Launch Mobile app");
         HomePage homePage = new HomePage(driver);
 
         LogHelpers.logStep("Tap on 'Only This Time' option");

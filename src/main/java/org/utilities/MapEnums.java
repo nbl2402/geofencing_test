@@ -1,4 +1,4 @@
-package org.enumObjects;
+package org.utilities;
 
 public class MapEnums {
 
