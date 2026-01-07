@@ -6,7 +6,7 @@ import org.pageObjects.HomePage;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 import org.utilities.LogHelpers;
-import org.utilities.MapEnums;
+import org.enumObjects.MapEnums;
 
 @Listeners(TestListener.class)
 public class TestGeoFencingRedirection extends MobileBaseTest{
